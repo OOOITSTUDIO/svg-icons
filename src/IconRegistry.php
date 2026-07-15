@@ -34,15 +34,39 @@ class IconRegistry
         return $realPath;
     }
 
-    public static function content(string $name): string
+    /**
+     * Содержимое SVG.
+     *
+     * Без опций (или без size/width/height/class) — оригинальный файл.
+     * С size/width/height/class — SVG без фиксированных размеров внутри <span>.
+     *
+     * Опции:
+     * - size: int|string — width и height обёртки сразу
+     * - width / height: int|string — размеры обёртки
+     * - class: string|array — CSS-класс(ы) обёртки (по умолчанию icon-wrapper)
+     * - style: string|array — дополнительные стили обёртки
+     * - wrapperOptions: array — доп. HTML-атрибуты обёртки
+     *
+     * @param array<string, mixed> $options
+     */
+    public static function content(string $name, array $options = []): string
     {
-        $content = file_get_contents(self::path($name));
+        $svg = file_get_contents(self::path($name));
 
-        if ($content === false) {
+        if ($svg === false) {
             throw new \RuntimeException("Unable to read icon '{$name}'");
         }
 
-        return $content;
+        $needAdaptive = isset($options['size'])
+            || isset($options['width'])
+            || isset($options['height'])
+            || isset($options['class']);
+
+        if (!$needAdaptive) {
+            return $svg;
+        }
+
+        return self::wrapAdaptive($svg, $options);
     }
 
     public static function exists(string $name): bool
@@ -196,6 +220,149 @@ class IconRegistry
         sort($result);
 
         return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    private static function wrapAdaptive(string $svg, array $options): string
+    {
+        $svg = preg_replace_callback(
+            '/<svg\b[^>]*>/i',
+            static function (array $matches): string {
+                return preg_replace(
+                    '/\s+(width|height)\s*=\s*["\'][^"\']*["\']/i',
+                    '',
+                    $matches[0]
+                ) ?? $matches[0];
+            },
+            $svg,
+            1
+        ) ?? $svg;
+
+        $svg = preg_replace(
+            '/<svg\b/i',
+            '<svg style="display:block; width:100%; height:100%;"',
+            $svg,
+            1
+        ) ?? $svg;
+
+        $wrapperStyle = [];
+
+        if (isset($options['size'])) {
+            $sizeValue = self::cssSize($options['size']);
+            $wrapperStyle['width'] = $sizeValue;
+            $wrapperStyle['height'] = $sizeValue;
+        } else {
+            if (isset($options['width'])) {
+                $wrapperStyle['width'] = self::cssSize($options['width']);
+            }
+            if (isset($options['height'])) {
+                $wrapperStyle['height'] = self::cssSize($options['height']);
+            }
+        }
+
+        if (!empty($options['style'])) {
+            $wrapperStyle = array_merge($wrapperStyle, self::parseStyle($options['style']));
+        }
+
+        $wrapperStyle['display'] = $wrapperStyle['display'] ?? 'inline-block';
+        $wrapperStyle['flex-shrink'] = $wrapperStyle['flex-shrink'] ?? '0';
+
+        $defaultClass = 'icon-wrapper';
+        $userClass = $options['class'] ?? null;
+
+        if ($userClass === null || $userClass === '') {
+            $wrapperClass = $defaultClass;
+        } elseif (is_array($userClass)) {
+            $wrapperClass = trim($defaultClass . ' ' . implode(' ', $userClass));
+        } else {
+            $wrapperClass = trim($defaultClass . ' ' . $userClass);
+        }
+
+        $attributes = [
+            'class' => $wrapperClass,
+            'style' => self::styleToString($wrapperStyle),
+        ];
+
+        if (isset($options['wrapperOptions']) && is_array($options['wrapperOptions'])) {
+            $attributes = array_merge($attributes, $options['wrapperOptions']);
+        }
+
+        return self::tag('span', $svg, $attributes);
+    }
+
+    private static function cssSize(mixed $value): string
+    {
+        return is_numeric($value) ? $value . 'px' : (string) $value;
+    }
+
+    /**
+     * @param string|array<string, string> $style
+     * @return array<string, string>
+     */
+    private static function parseStyle(string|array $style): array
+    {
+        if (is_array($style)) {
+            $result = [];
+            foreach ($style as $key => $value) {
+                $result[(string) $key] = (string) $value;
+            }
+
+            return $result;
+        }
+
+        $result = [];
+        foreach (explode(';', $style) as $pair) {
+            $parts = explode(':', $pair, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            $key = trim($parts[0]);
+            $value = trim($parts[1]);
+            if ($key !== '') {
+                $result[$key] = $value;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, string> $style
+     */
+    private static function styleToString(array $style): string
+    {
+        $parts = [];
+        foreach ($style as $prop => $val) {
+            $parts[] = $prop . ': ' . $val;
+        }
+
+        return implode('; ', $parts);
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    private static function tag(string $tag, string $content, array $attributes): string
+    {
+        $attrString = '';
+        foreach ($attributes as $name => $value) {
+            if ($value === null || $value === false) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $value = implode(' ', $value);
+            }
+
+            $attrString .= ' ' . $name . '="'
+                . htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                . '"';
+        }
+
+        return '<' . $tag . $attrString . '>' . $content . '</' . $tag . '>';
     }
 
     /**

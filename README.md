@@ -43,11 +43,24 @@ use OOOITStudio\SvgIcons\IconRegistry;
 // Абсолютный путь к файлу
 $path = IconRegistry::path('arrows/linear/arrow-left');
 
-// Содержимое SVG
+// Сырой SVG без обёртки
 $svg = IconRegistry::content('arrows/linear/arrow-left');
 
 // То же через точку вместо слэша
 $svg = IconRegistry::content('arrows.linear.arrow-left');
+
+// С размером / классом — SVG в <span class="icon-wrapper">
+echo IconRegistry::content('arrows/linear/arrow-left', [
+    'size' => 24,
+    'class' => 'my-icon',
+]);
+
+echo IconRegistry::content('arrows/linear/arrow-left', [
+    'width' => 18,
+    'height' => 18,
+    'style' => ['color' => '#333'],
+    'wrapperOptions' => ['data-icon' => 'arrow-left'],
+]);
 
 IconRegistry::exists('arrows/linear/arrow-left'); // bool
 
