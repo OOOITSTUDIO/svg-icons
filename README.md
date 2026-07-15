@@ -7,21 +7,25 @@ PHP ≥ 8.1.
 
 ```
 icons/
-  bold/
-    social/
-      ...
-  linear/
-    arrows/
+  arrows/
+    linear/
       arrow-left.svg
-    ...
+  social/
+    bold/
+      ...
+  call/
+    linear/
+      ...
 src/
   IconRegistry.php
 ```
 
+Иерархия: **категория → стиль → файл**.
+
 Имя иконки = путь относительно `icons/` без расширения:
 
-- файл `icons/linear/arrows/arrow-left.svg`
-- имя `linear/arrows/arrow-left`
+- файл `icons/arrows/linear/arrow-left.svg`
+- имя `arrows/linear/arrow-left`
 
 ## Установка в проект
 
@@ -37,26 +41,32 @@ composer require oooitstudio/svg-icons
 use OOOITStudio\SvgIcons\IconRegistry;
 
 // Абсолютный путь к файлу
-$path = IconRegistry::path('linear/arrows/arrow-left');
+$path = IconRegistry::path('arrows/linear/arrow-left');
 
 // Содержимое SVG
-$svg = IconRegistry::content('linear/arrows/arrow-left');
+$svg = IconRegistry::content('arrows/linear/arrow-left');
 
 // То же через точку вместо слэша
-$svg = IconRegistry::content('linear.arrows.arrow-left');
+$svg = IconRegistry::content('arrows.linear.arrow-left');
 
-IconRegistry::exists('linear/arrows/arrow-left'); // bool
+IconRegistry::exists('arrows/linear/arrow-left'); // bool
 
-// Все иконки: ["bold/social/...", "linear/arrows/arrow-left", ...]
+// Все иконки: ["arrows/linear/arrow-left", "social/bold/...", ...]
 IconRegistry::list();
 
-// По категории любого уровня
-IconRegistry::listByCategory('linear');
-IconRegistry::listByCategory('linear/arrows');
+// По категории / категории+стилю
+IconRegistry::listByCategory('arrows');
+IconRegistry::listByCategory('arrows/linear');
 
-// Папки на уровне
-IconRegistry::categories();           // ["bold", "linear"]
-IconRegistry::categories('linear');   // ["arrows", "call", ...]
+// По стилю во всех категориях
+IconRegistry::listByStyle('linear');
+IconRegistry::listByStyle('bold');
+
+// Папки
+IconRegistry::categories();            // ["arrows", "call", "social", ...]
+IconRegistry::categories('arrows');    // ["linear"]
+IconRegistry::styles();                // ["bold", "linear", ...]
+IconRegistry::styles('social');        // ["bold"]
 ```
 
 Если иконка не найдена, `path()` и `content()` бросают `RuntimeException`.
@@ -91,6 +101,6 @@ docker compose run --rm composer dump-autoload -o
 
 ## Добавление иконок
 
-1. Положите `.svg` в нужную папку внутри `icons/`.
-2. Обращайтесь по относительному пути без расширения.
+1. Положите `.svg` в `icons/{категория}/{стиль}/`.
+2. Обращайтесь по относительному пути без расширения (`arrows/linear/arrow-left`).
 3. Версию пакета задавайте git-тегами (`v0.1.0`, `v1.0.0`, …).

@@ -56,7 +56,7 @@ class IconRegistry
     }
 
     /**
-     * Список всех иконок вида "linear/arrows/arrow-left", "bold/social/facebook" и т.д.
+     * Список всех иконок вида "arrows/linear/arrow-left", "social/bold/facebook" и т.д.
      *
      * @return list<string>
      */
@@ -95,8 +95,8 @@ class IconRegistry
     }
 
     /**
-     * Иконки из категории любого уровня вложенности.
-     * Например: listByCategory('linear') или listByCategory('linear/arrows')
+     * Иконки из категории (и опционально стиля).
+     * Например: listByCategory('arrows') или listByCategory('arrows/linear')
      *
      * @return list<string>
      */
@@ -111,9 +111,33 @@ class IconRegistry
     }
 
     /**
+     * Иконки одного стиля во всех категориях (второй сегмент пути).
+     * Например: listByStyle('linear') → ["arrows/linear/...", "call/linear/...", ...]
+     *
+     * @return list<string>
+     */
+    public static function listByStyle(string $style): array
+    {
+        $style = self::normalize($style);
+
+        if (str_contains($style, '/')) {
+            throw new \InvalidArgumentException('Style must be a single path segment');
+        }
+
+        return array_values(array_filter(
+            self::list(),
+            static function (string $icon) use ($style): bool {
+                $parts = explode('/', $icon);
+
+                return ($parts[1] ?? null) === $style;
+            }
+        ));
+    }
+
+    /**
      * Категории (папки) на указанном уровне.
-     * categories() → ["bold", "linear"]
-     * categories('linear') → ["arrows", "call", ...]
+     * categories() → ["arrows", "call", "social", ...]
+     * categories('arrows') → ["linear"]
      *
      * @return list<string>
      */
@@ -151,7 +175,31 @@ class IconRegistry
     }
 
     /**
-     * Нормализация имени: "linear.arrows.arrow-left" → "linear/arrows/arrow-left".
+     * Стили: styles() — уникальные по всему пакету; styles('arrows') — внутри категории.
+     *
+     * @return list<string>
+     */
+    public static function styles(?string $category = null): array
+    {
+        if ($category !== null && $category !== '') {
+            return self::categories($category);
+        }
+
+        $styles = [];
+        foreach (self::categories() as $cat) {
+            foreach (self::categories($cat) as $style) {
+                $styles[$style] = true;
+            }
+        }
+
+        $result = array_keys($styles);
+        sort($result);
+
+        return $result;
+    }
+
+    /**
+     * Нормализация имени: "arrows.linear.arrow-left" → "arrows/linear/arrow-left".
      * Защита от path traversal (..).
      */
     private static function normalize(string $name): string
