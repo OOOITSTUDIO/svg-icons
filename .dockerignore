@@ -1,0 +1,9 @@
+.git
+.idea
+vendor
+composer.lock
+README.md
+Makefile
+docker-compose.yml
+Dockerfile
+.dockerignore
