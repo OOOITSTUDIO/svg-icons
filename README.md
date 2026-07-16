@@ -114,6 +114,63 @@ docker compose run --rm composer dump-autoload -o
 
 ## Добавление иконок
 
+Вручную:
+
 1. Положите `.svg` в `icons/{категория}/{стиль}/`.
 2. Обращайтесь по относительному пути без расширения (`arrows/linear/arrow-left`).
 3. Версию пакета задавайте git-тегами (`v0.1.0`, `v1.0.0`, …).
+
+## Синхронизация с Figma
+
+Дизайнер правит icon pack в Figma. GitHub Action по cron или вручную выгружает SVG, меняет заданные цвета на `currentColor` и открывает pull request.
+
+### Именование в Figma
+
+В Figma используйте порядок `Стиль / Категория / Имя`, а в репозитории файл будет сохранён как `категория/стиль/имя.svg`.
+
+```text
+Linear / users / user          -> users/linear/user.svg
+Bold / social / telegram       -> social/bold/telegram.svg
+Linear / network / window-frame -> network/linear/window-frame.svg
+```
+
+Структура фиксированная: ровно 3 сегмента.  
+Экспортируются только узлы типа `COMPONENT`.
+
+### Секреты и переменные репозитория
+
+GitHub -> Settings -> Secrets and variables:
+
+- `FIGMA_TOKEN` — secret, Personal Access Token Figma
+- `FIGMA_FILE_KEY` — secret, ключ файла из URL вида `figma.com/design/<FILE_KEY>/...`
+- `FIGMA_PAGE_NAME` — variable, опционально, имя страницы; по умолчанию `Icons`
+- `FIGMA_NODE_ID` — variable, опционально, id конкретного узла/фрейма вместо поиска по имени
+
+Для вашего текущего файла:
+
+- `FIGMA_FILE_KEY`: `kDXgobDuxpuACvizC3oH1U`
+- `FIGMA_NODE_ID`: `0:1`
+
+Цвета для замены на `currentColor` задаются в `scripts/figma-sync/config.json` в поле `colorsToCurrentColor`.
+
+### Локальный запуск
+
+```bash
+export FIGMA_TOKEN=figd_...
+export FIGMA_FILE_KEY=xxxxxxxx
+cd scripts/figma-sync
+node sync.mjs --dry-run
+node sync.mjs
+```
+
+Флаг `--keep-orphans` отключает удаление локальных SVG, которых больше нет в Figma.
+
+### Workflow
+
+Файл `.github/workflows/sync-figma-icons.yml`:
+
+- запускается по cron каждый понедельник в 06:00 UTC
+- поддерживает ручной запуск через `workflow_dispatch`
+- при изменениях создаёт PR в ветку `chore/sync-figma-icons`
+
+После merge PR при необходимости создайте новый релизный тег (`v0.1.4` и т.д.).

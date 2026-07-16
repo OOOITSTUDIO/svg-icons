@@ -1,0 +1,9 @@
+{
+  "pageName": "Icons",
+  "iconsDir": "icons",
+  "colorsToCurrentColor": [
+    "#1C274C"
+  ],
+  "exportBatchSize": 50,
+  "nodeTypes": ["COMPONENT"]
+}

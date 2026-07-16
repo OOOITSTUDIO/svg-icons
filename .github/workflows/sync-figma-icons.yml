@@ -1,0 +1,55 @@
+name: Sync Figma icons
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-figma-icons
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Sync icons from Figma
+        id: sync
+        working-directory: scripts/figma-sync
+        env:
+          FIGMA_TOKEN: ${{ secrets.FIGMA_TOKEN }}
+          FIGMA_FILE_KEY: ${{ secrets.FIGMA_FILE_KEY }}
+          FIGMA_PAGE_NAME: ${{ vars.FIGMA_PAGE_NAME }}
+          FIGMA_NODE_ID: ${{ vars.FIGMA_NODE_ID }}
+        run: node sync.mjs
+
+      - name: Create pull request
+        if: steps.sync.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore(icons): sync from Figma"
+          branch: chore/sync-figma-icons
+          delete-branch: true
+          title: "chore(icons): sync from Figma"
+          body: |
+            Автосинхронизация иконок из Figma.
+
+            - выгружены изменённые SVG
+            - статичные цвета из `scripts/figma-sync/config.json` заменены на `currentColor`
+
+            Проверьте diff и слейте PR. После merge при необходимости поставьте новый git-тег релиза.
+          add-paths: |
+            icons
