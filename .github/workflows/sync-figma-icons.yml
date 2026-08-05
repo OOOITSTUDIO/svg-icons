@@ -50,6 +50,7 @@ jobs:
             - выгружены изменённые SVG
             - статичные цвета из `scripts/figma-sync/config.json` заменены на `currentColor`
 
-            Проверьте diff и слейте PR. После merge при необходимости поставьте новый git-тег релиза.
+            Проверьте diff и слейте PR. После merge CI сделает **patch**-релиз в Packagist.
+            Для minor/major добавьте `#minor` или `#major` в заголовок PR перед merge.
           add-paths: |
             icons

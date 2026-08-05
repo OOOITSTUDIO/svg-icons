@@ -118,7 +118,7 @@ docker compose run --rm composer dump-autoload -o
 
 1. Положите `.svg` в `icons/{категория}/{стиль}/`.
 2. Обращайтесь по относительному пути без расширения (`arrows/linear/arrow-left`).
-3. Версию пакета задавайте git-тегами (`v0.1.0`, `v1.0.0`, …).
+3. Версии — semver `vMAJOR.MINOR.PATCH` (git-теги). После merge в `main` CI сам делает bump и пушит в Packagist (по умолчанию **patch**).
 
 ## Синхронизация с Figma
 
@@ -145,6 +145,9 @@ GitHub -> Settings -> Secrets and variables:
 - `FIGMA_FILE_KEY` — secret, ключ файла из URL вида `figma.com/design/<FILE_KEY>/...`
 - `FIGMA_PAGE_NAME` — variable, опционально, имя страницы; по умолчанию `Icons`
 - `FIGMA_NODE_ID` — variable, опционально, id конкретного узла/фрейма вместо поиска по имени
+- `PACKAGIST_USERNAME` — secret, логин Packagist
+- `PACKAGIST_TOKEN` — secret, API token Packagist (Update API / GitHub hook token)
+- `PACKAGIST_API_URL` — variable, опционально; по умолчанию `https://packagist.org/api/update-package`, для Private Packagist — `https://packagist.com/api/update-package`
 
 Для вашего текущего файла:
 
@@ -173,4 +176,17 @@ node sync.mjs
 - поддерживает ручной запуск через `workflow_dispatch`
 - при изменениях создаёт PR в ветку `chore/sync-figma-icons`
 
-После merge PR при необходимости создайте новый релизный тег (`v0.1.4` и т.д.).
+После merge PR в `main` workflow `.github/workflows/packagist-push.yml` (аналог `npm version`):
+
+- по умолчанию **patch** (`v0.1.8` → `v0.1.9`)
+- в заголовке PR / коммите можно написать `#minor` или `#major`
+- пушит тег и дергает Packagist Update API
+
+| Ситуация | Bump |
+|---|---|
+| Новые/изменённые иконки из Figma | patch (автоматически) |
+| Обратно совместимое изменение API (`IconRegistry` и т.п.) | `#minor` в заголовке PR |
+| Ломающее изменение API | `#major` в заголовке PR |
+| Вручную | Actions → Packagist push → выбрать patch/minor/major |
+
+Ручной релиз: Actions → Packagist push → Run workflow.
