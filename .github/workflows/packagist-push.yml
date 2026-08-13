@@ -1,67 +1,67 @@
 name: Packagist push
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "icons/**"
-      - "src/**"
-      - "composer.json"
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: "Как npm version: patch | minor | major"
-        required: true
-        default: patch
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
+    push:
+        branches:
+            - master
+        paths:
+            - "icons/**"
+            - "src/**"
+            - "composer.json"
+    workflow_dispatch:
+        inputs:
+            bump:
+                description: "Как npm version: patch | minor | major"
+                required: true
+                default: patch
+                type: choice
+                options:
+                    - patch
+                    - minor
+                    - major
 
 permissions:
-  contents: write
+    contents: write
 
 concurrency:
-  group: packagist-push
-  cancel-in-progress: false
+    group: packagist-push
+    cancel-in-progress: false
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+    release:
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-      - name: Bump version and push tag
-        id: tag
-        uses: anothrNick/github-tag-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
-          DEFAULT_BUMP: ${{ inputs.bump || 'patch' }}
-          # ручной запуск без новых коммитов всё равно создаёт тег
-          FORCE_WITHOUT_CHANGES: ${{ github.event_name == 'workflow_dispatch' }}
+            - name: Bump version and push tag
+              id: tag
+              uses: anothrNick/github-tag-action@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  WITH_V: true
+                  DEFAULT_BUMP: ${{ inputs.bump || 'patch' }}
+                  # ручной запуск без новых коммитов всё равно создаёт тег
+                  FORCE_WITHOUT_CHANGES: ${{ github.event_name == 'workflow_dispatch' }}
 
-      - name: Notify Packagist
-        if: steps.tag.outputs.new_tag != ''
-        env:
-          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
-          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
-          PACKAGIST_API_URL: ${{ vars.PACKAGIST_API_URL || 'https://packagist.org/api/update-package' }}
-        run: |
-          set -euo pipefail
+            - name: Notify Packagist
+              if: steps.tag.outputs.new_tag != ''
+              env:
+                  PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+                  PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+                  PACKAGIST_API_URL: ${{ vars.PACKAGIST_API_URL || 'https://packagist.org/api/update-package' }}
+              run: |
+                  set -euo pipefail
 
-          if [ -z "${PACKAGIST_USERNAME}" ] || [ -z "${PACKAGIST_TOKEN}" ]; then
-            echo "::error::Set secrets PACKAGIST_USERNAME and PACKAGIST_TOKEN"
-            exit 1
-          fi
+                  if [ -z "${PACKAGIST_USERNAME}" ] || [ -z "${PACKAGIST_TOKEN}" ]; then
+                    echo "::error::Set secrets PACKAGIST_USERNAME and PACKAGIST_TOKEN"
+                    exit 1
+                  fi
 
-          curl -sS -f -X POST \
-            "${PACKAGIST_API_URL}?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
-            -H 'Content-Type: application/json' \
-            -d "{\"repository\":{\"url\":\"https://github.com/${{ github.repository }}\"}}"
+                  curl -sS -f -X POST \
+                    "${PACKAGIST_API_URL}?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+                    -H 'Content-Type: application/json' \
+                    -d "{\"repository\":{\"url\":\"https://github.com/${{ github.repository }}\"}}"
