@@ -44,6 +44,9 @@ const pageName = process.env.FIGMA_PAGE_NAME || config.pageName || null;
 const nodeId = process.env.FIGMA_NODE_ID || null;
 const iconsDir = path.resolve(ROOT, config.iconsDir || 'icons');
 const colors = (config.colorsToCurrentColor || ['#1C274C']).map(normalizeHex);
+const strokeWidthVar = normalizeCssVarName(
+  config.strokeWidthVar || '--icon-stroke-width'
+);
 const batchSize = config.exportBatchSize || 50;
 const nodeTypes = new Set(config.nodeTypes || ['COMPONENT']);
 
@@ -90,6 +93,7 @@ async function main() {
 
     let svg = await fetchText(svgUrl);
     svg = applyCurrentColor(svg, colors);
+    svg = applyStrokeWidthVar(svg, strokeWidthVar);
     svg = finalizeSvg(svg);
 
     const absPath = path.join(iconsDir, `${icon.relPath}.svg`);
@@ -305,6 +309,47 @@ function applyCurrentColor(svg, hexColors) {
   }
 
   return result;
+}
+
+/**
+ * stroke-width="1.5" → stroke-width="var(--icon-stroke-width, 1.5)"
+ * Уже обёрнутые в var(...) не трогает (идемпотентно при повторном sync).
+ */
+function applyStrokeWidthVar(svg, cssVarName) {
+  let result = svg.replace(
+    /stroke-width\s*=\s*(["'])([^"']+)\1/gi,
+    (match, quote, rawValue) => {
+      const value = rawValue.trim();
+      if (!value || /^var\s*\(/i.test(value)) {
+        return match;
+      }
+
+      return `stroke-width=${quote}var(${cssVarName}, ${value})${quote}`;
+    }
+  );
+
+  result = result.replace(
+    /stroke-width\s*:\s*([^;}"']+)/gi,
+    (match, rawValue) => {
+      const value = rawValue.trim();
+      if (!value || /^var\s*\(/i.test(value)) {
+        return match;
+      }
+
+      return `stroke-width: var(${cssVarName}, ${value})`;
+    }
+  );
+
+  return result;
+}
+
+function normalizeCssVarName(name) {
+  const value = String(name || '').trim();
+  if (!value) {
+    throw new Error('strokeWidthVar must not be empty');
+  }
+
+  return value.startsWith('--') ? value : `--${value}`;
 }
 
 function finalizeSvg(svg) {

@@ -37,12 +37,14 @@ class IconRegistry
     /**
      * Содержимое SVG.
      *
-     * Без опций (или без size/width/height/class) — оригинальный файл.
+     * Без опций (или без size/width/height/class/strokeWidth) — оригинальный файл.
      * С size/width/height/class — SVG без фиксированных размеров внутри <span>.
+     * С одним strokeWidth — переменная на корневом <svg>, без обёртки.
      *
      * Опции:
      * - size: int|string — width и height обёртки сразу
      * - width / height: int|string — размеры обёртки
+     * - strokeWidth: int|float|string — CSS-переменная --icon-stroke-width
      * - class: string|array — CSS-класс(ы) обёртки (по умолчанию icon-wrapper)
      * - style: string|array — дополнительные стили обёртки
      * - wrapperOptions: array — доп. HTML-атрибуты обёртки
@@ -61,6 +63,10 @@ class IconRegistry
             || isset($options['width'])
             || isset($options['height'])
             || isset($options['class']);
+
+        if (isset($options['strokeWidth']) && !$needAdaptive) {
+            return self::withStrokeWidthOnSvg($svg, $options['strokeWidth']);
+        }
 
         if (!$needAdaptive) {
             return $svg;
@@ -262,6 +268,10 @@ class IconRegistry
             }
         }
 
+        if (isset($options['strokeWidth'])) {
+            $wrapperStyle['--icon-stroke-width'] = self::strokeWidthValue($options['strokeWidth']);
+        }
+
         if (!empty($options['style'])) {
             $wrapperStyle = array_merge($wrapperStyle, self::parseStyle($options['style']));
         }
@@ -295,6 +305,62 @@ class IconRegistry
     private static function cssSize(mixed $value): string
     {
         return is_numeric($value) ? $value . 'px' : (string) $value;
+    }
+
+    /**
+     * Значение для SVG stroke-width (user units), без принудительного px.
+     */
+    private static function strokeWidthValue(mixed $value): string
+    {
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+
+        return trim((string) $value);
+    }
+
+    /**
+     * Задаёт --icon-stroke-width на корневом <svg> (без обёртки).
+     */
+    private static function withStrokeWidthOnSvg(string $svg, mixed $strokeWidth): string
+    {
+        $varValue = self::strokeWidthValue($strokeWidth);
+
+        return preg_replace_callback(
+            '/<svg\b[^>]*>/i',
+            static function (array $matches) use ($varValue): string {
+                $tag = $matches[0];
+                $declaration = '--icon-stroke-width: ' . $varValue;
+
+                if (preg_match('/\sstyle\s*=\s*(["\'])(.*?)\1/i', $tag, $styleMatch)) {
+                    $quote = $styleMatch[1];
+                    $style = trim($styleMatch[2], " \t;");
+                    $style = preg_replace(
+                        '/(?:^|;)\s*--icon-stroke-width\s*:\s*[^;]*/i',
+                        '',
+                        $style
+                    ) ?? $style;
+                    $style = trim($style, " \t;");
+                    $merged = $style === '' ? $declaration : $style . '; ' . $declaration;
+
+                    return preg_replace(
+                        '/\sstyle\s*=\s*(["\']).*?\1/i',
+                        ' style=' . $quote . $merged . $quote,
+                        $tag,
+                        1
+                    ) ?? $tag;
+                }
+
+                return preg_replace(
+                    '/<svg\b/i',
+                    '<svg style="' . $declaration . '"',
+                    $tag,
+                    1
+                ) ?? $tag;
+            },
+            $svg,
+            1
+        ) ?? $svg;
     }
 
     /**

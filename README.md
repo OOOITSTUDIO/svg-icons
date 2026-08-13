@@ -52,6 +52,7 @@ $svg = IconRegistry::content('arrows.linear.arrow-left');
 // С размером / классом — SVG в <span class="icon-wrapper">
 echo IconRegistry::content('arrows/linear/arrow-left', [
     'size' => 24,
+    'strokeWidth' => 2,
     'class' => 'my-icon',
 ]);
 
@@ -154,7 +155,8 @@ GitHub -> Settings -> Secrets and variables:
 - `FIGMA_FILE_KEY`: `kDXgobDuxpuACvizC3oH1U`
 - `FIGMA_NODE_ID`: `0:1`
 
-Цвета для замены на `currentColor` задаются в `scripts/figma-sync/config.json` в поле `colorsToCurrentColor`.
+Цвета для замены на `currentColor` задаются в `scripts/figma-sync/config.json` в поле `colorsToCurrentColor`.  
+`stroke-width` при sync заменяется на `var(--icon-stroke-width, <исходное>)` (имя переменной — `strokeWidthVar` в том же config).
 
 ### Локальный запуск
 

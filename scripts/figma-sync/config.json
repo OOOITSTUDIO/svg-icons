@@ -4,6 +4,7 @@
   "colorsToCurrentColor": [
     "#1C274C"
   ],
+  "strokeWidthVar": "--icon-stroke-width",
   "exportBatchSize": 50,
   "nodeTypes": ["COMPONENT"]
 }
